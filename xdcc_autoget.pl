@@ -100,6 +100,7 @@ sub ag_help
 	Irssi::print "ag_interrun_delay             : delay (in minutes, the rest seconds) between finishing a round and starting another";
 	Irssi::print "ag_autorun                    : whether to run on startup";
 	Irssi::print "ag_xdcc_send_prefix           : the xdcc message before the pack #";
+	Irssi::print "ag_xdcc_cancel_prefix         : the xdcc message to cancel a transfer";
 	Irssi::print "ag_xdcc_find_prefix           : the xdcc message before the search term";
 	Irssi::print "ag_bot_file                   : where your bot list is stored";
 	Irssi::print "ag_search_file                : where your search list is stored}";
@@ -408,7 +409,7 @@ sub ag_stop
 
 sub ag_settings
 {
-	($nexdelay, $dcrdelay, $trcdelay, $exedelay, $initflag, $sendprefix, $findprefix, $botsfilename, $searchesfilename) = (Irssi::settings_get_int("ag_next_delay"), Irssi::settings_get_int("ag_dcc_closed_retry_delay"), Irssi::settings_get_int("ag_transfer_confirmation_delay"), Irssi::settings_get_int("ag_interrun_delay"), Irssi::settings_get_bool("ag_autorun"), Irssi::settings_get_str("ag_xdcc_send_prefix"), Irssi::settings_get_str("ag_xdcc_find_prefix"), Irssi::settings_get_str("ag_bot_file"), Irssi::settings_get_str("ag_search_file"));
+	($nexdelay, $dcrdelay, $trcdelay, $exedelay, $initflag, $sendprefix, $cancelprefix, $findprefix, $botsfilename, $searchesfilename) = (Irssi::settings_get_int("ag_next_delay"), Irssi::settings_get_int("ag_dcc_closed_retry_delay"), Irssi::settings_get_int("ag_transfer_confirmation_delay"), Irssi::settings_get_int("ag_interrun_delay"), Irssi::settings_get_bool("ag_autorun"), Irssi::settings_get_str("ag_xdcc_send_prefix"), Irssi::settings_get_str("ag_xdcc_cancel_prefix"), Irssi::settings_get_str("ag_xdcc_find_prefix"), Irssi::settings_get_str("ag_bot_file"), Irssi::settings_get_str("ag_search_file"));
 }
 
 sub ag_reset
@@ -444,6 +445,7 @@ Irssi::settings_add_int("ag", "ag_transfer_confirmation_delay", $trcdelay);
 Irssi::settings_add_int("ag", "ag_interrun_delay", $exedelay);
 Irssi::settings_add_bool("ag", "ag_autorun", $initflag);
 Irssi::settings_add_str("ag", "ag_xdcc_send_prefix", $sendprefix);
+Irssi::settings_get_str("ag", "ag_xdcc_cancel_prefix", $cancelprefix);
 Irssi::settings_add_str("ag", "ag_xdcc_find_prefix", $findprefix);
 Irssi::settings_add_str("ag", "ag_bot_file", $botsfilename);
 Irssi::settings_add_str("ag", "ag_search_file", $searchesfilename);
