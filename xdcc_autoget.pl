@@ -202,6 +202,10 @@ sub ag_closedcc	#deals with DCC closes
 		if ($dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
 		{
 			Irssi::print "AG | transfer successful";	#if so, does next pack/search/bot (in that order)
+			if ($dcc->{'skipped'} == $dcc->{'size'})
+			{
+				$server->command("msg $bots[$botcounter] $cancelprefix");		#workaround because IRSSI doesn't actually 'get' packs if they're already downloaded, causing long stalls if left unattended.
+			}
 			if ($packcounter < $#packs)
 			{
 				$pact = 1;		#allow pack requests now that transfer is finished
