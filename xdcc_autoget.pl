@@ -174,7 +174,7 @@ sub ag_getmsg		#runs when bot sends privmsg. Avoid talking to bots to keep this 
 	my $botname = @_[2];
 	$botname =~ tr/[A-Z]/[a-z]/;
 	$bots[$botcounter] =~ tr/[A-Z]/[a-z]/;
-	if ($botname = $bots[$botcounter]){&parseresponse($message);}
+	if ($botname == $bots[$botcounter]){&parseresponse($message);}
 }
 
 sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUMBER]:" since most bots reply to !find requests like that. If a bot uses another method and this doesn't work, fix it yourself and send me the code =D
