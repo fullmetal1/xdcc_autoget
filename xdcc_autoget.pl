@@ -183,7 +183,6 @@ sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUM
 	push (@packs, quotewords('(#|:)', 0, $message)); 
 	@packs = grep(m/\d$/, @packs);
 	@packs = ag_uniq(@packs);		#avoids notifs on packs being sent etc from interfering with packlist
-	Irssi::print "AG | pact " . $pact . " \$#packs " . $#packs . " \$packs[\$packcounter] " .$packs[$packcounter];	
 	if ($pact == 0 and $#packs >= 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
 	{
 		$pact = 1;
