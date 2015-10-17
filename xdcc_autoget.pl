@@ -1,5 +1,5 @@
 # xdcc autogetter, to automate searching and downloading xdcc packs based on chosen search strings
-# requires that you enable dcc_autoget and dcc_autoresume
+# requires that you enable dcc_autoget and dcc_autoresume. Also requires File::Dir which can be installed with the command >>> sudo perl -MCPAN -e 'install "File::HomeDir"'
 # made because torrents are watched by the feds, but xdcc lacks RSS feeds.
 # if you encounter any problems, fix it yourself you lazy bastard (or get me to), then contact me so I can add your fix and bump that version #
 # BeerWare License. Use any part you want, but buy me a beer if you ever meet me and liked this hacked together broken PoS
@@ -27,7 +27,7 @@ use strict;
 use Irssi;
 use Text::ParseWords;
 use autodie; # die if problem reading or writing a file
-use FindBin;
+use File::HomeDir;
 use File::Copy;
 use Irssi 20090331;
 use vars qw($VERSION %IRSSI);
@@ -56,8 +56,8 @@ my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 my $sendprefix = "xdcc send";		#virtually universal xdcc send, cancel, and find prefixes
 my $cancelprefix = "xdcc cancel";
 my $findprefix = "!find";
-my $botsfilename = "$FindBin::Bin/.irssi/scripts/bots.txt";		#werks on my machine (tm).
-my $searchesfilename = "$FindBin::Bin/.irssi/scripts/searches.txt";
+my $botsfilename = File::HomeDir->my_home . "/.irssi/scripts/bots.txt";		#werks on my machine (tm).
+my $searchesfilename = File::HomeDir->my_home . "/.irssi/scripts/searches.txt";
 
 my $dccflag = 0;	#flag so that dccs aren't mistakenly thought of belonging to AG
 
@@ -183,7 +183,8 @@ sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUM
 	push (@packs, quotewords('(#|:)', 0, $message)); 
 	@packs = grep(m/\d$/, @packs);
 	@packs = ag_uniq(@packs);		#avoids notifs on packs being sent etc from interfering with packlist
-	if ($pact == 0 and $#packs != 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
+	Irssi::print "AG | pact " . $pact . " \$#packs " . $#packs . " \$packs[\$packcounter] " .$packs[$packcounter];	
+	if ($pact == 0 and $#packs >= 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
 	{
 		$pact = 1;
 		&ag_reqpack();
@@ -303,9 +304,9 @@ sub ag_parseadd		#parses add arguments for storage
 		print file $arg . "\n";		#print to file
 	}
 	close(file);
-	copy($file, "temp") or die "COPY FAILED";	#copy to temp file so that duplicate lines [searches/bots] can be removed
+	copy($file, "/tmp/temp") or die "COPY FAILED";	#copy to temp file so that duplicate lines [searches/bots] can be removed
 	unlink "$file";
-	open(temp, "<", "temp");
+	open(temp, "<", "/tmp/temp");
 	open(file, ">", $file);
 	my %hTmp;
 	while (my $sLine = <temp>)	#remove duplicate lines
@@ -315,26 +316,26 @@ sub ag_parseadd		#parses add arguments for storage
 		$sLine=~s/\s+$//;
 		print file qq{$sLine\n} unless ($hTmp{$sLine}++);
 	}
-	unlink "temp";
+	unlink "/tmp/temp";
 	close(file);
 }
 
 sub ag_parserem		#parses remove arguments for deletion from file
 {
 	my ($file, @args) = @_;
-	open(temp, ">>", "temp");
+	open(temp, ">>", "/tmp/temp");
 	foreach my $arg (@args)
 	{
 		Irssi::print "AG | removing term: " . $arg;
 		print temp $arg . "\n";
 	}
 	close(temp);
-	open(temp2, ">", "temp2");
+	open(temp2, ">", "/tmp/temp2");
 	open(file, "<", $file);
 	my %hTmp;
 	while( my $fileLine = file->getline() )		#get each entry already stored
 	{
-		open(temp, "<", "temp");
+		open(temp, "<", "/tmp/temp");
 		while( my $tempLine = temp->getline() )
 		{
 			if ($fileLine eq $tempLine)	#if entry in file and arguments
@@ -346,10 +347,10 @@ sub ag_parserem		#parses remove arguments for deletion from file
 		close(temp);
 	}
 	close(temp2);
-	copy("temp2", $file) or die "COPY FAILED";	#rewrite old file
-	copy($file, "temp") or die "COPY FAILED";
+	copy("/tmp/temp2", $file) or die "COPY FAILED";	#rewrite old file
+	copy($file, "/tmp/temp") or die "COPY FAILED";
 	unlink "$file";
-	open(temp, "<", "temp");
+	open(temp, "<", "/tmp/temp");
 	open(searches, ">", $file);
 	my %hTmp;
 	while (my $sLine = <temp>)		#remove duplicate lines
@@ -359,8 +360,8 @@ sub ag_parserem		#parses remove arguments for deletion from file
 		$sLine=~s/\s+$//;
 		print file qq{$sLine\n} unless ($hTmp{$sLine}++);
 	}
-	unlink "temp";
-	unlink "temp2";
+	unlink "/tmp/temp";
+	unlink "/tmp/temp2";
 	close(file);
 }
 
@@ -477,6 +478,10 @@ sub ag_reset
 	Irssi::print "AG | all settings reset to default values";
 }
 
+open(bots, ">>", $botsfilename);		#makes bots and searches file if they don't exist
+close(bots);
+open(searches, ">>", $searchesfilename);
+close(searches);
 if ($initflag) {&ag_init();}
 
 Irssi::signal_add("dcc closed", "ag_closedcc");
