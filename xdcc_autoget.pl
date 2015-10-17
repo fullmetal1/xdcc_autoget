@@ -52,7 +52,8 @@ my $exedelay = 15;	#delay (in minutes) between finishing one run and starting an
 
 my $initflag = 1;	#flag controls whether AG starts on IRSSI boot (if in autorun), or on LOAD
 
-my $sendprefix = "xdcc send ";		#virtually universal xdcc send an find prefixes
+my $sendprefix = "xdcc send ";		#virtually universal xdcc send, cancel, and find prefixes
+my $cancelprefix = "xdcc cancel";
 my $findprefix = "!find";
 my $botsfilename = "$FindBin::Bin/.irssi/scripts/bots.txt";		#werks on my machine (tm).
 my $searchesfilename = "$FindBin::Bin/.irssi/scripts/searches.txt";
@@ -73,15 +74,13 @@ sub ag_init		#init system
 {
 	Irssi::print "AG | Autoget initiated";
 	Irssi::print "AG | /ag_help for help";
-	$server = Irssi::active_server();		#keep trying to get server until it works, then continue after 5 seconds
-	if ($server !~ m/^Irssi::Irc::Server=HASH/) {Irssi::timeout_add_once(1000, sub {&ag_retry;} , []);}
-	else {Irssi::timeout_add_once(5000, sub {&ag_run;} , []);}
+	&ag_initserver;
 }
 
-sub ag_retry	#same as above, but doesn't print shit to screen
+sub ag_initserver	#init server
 {
-	$server = Irssi::active_server();
-	if ($server !~ m/^Irssi::Irc::Server=HASH/) {Irssi::timeout_add_once(1000, sub {&ag_retry;} , []);}
+	$server = Irssi::active_server();	#keep trying to get server until it works, then continue after 5 seconds
+	if ($server !~ m/^Irssi::Irc::Server=HASH/) {Irssi::timeout_add_once(1000, sub {&ag_initserver;} , []);}
 	else {Irssi::timeout_add_once(5000, sub {&ag_run;} , []);}
 }
 
@@ -138,6 +137,7 @@ sub ag_getmsg		#runs when bot sends privmsg. Avoid talking to bots to keep this 
 	my $message = @_[1];
 	my $botname = @_[2];
 	$botname =~ tr/[A-Z]/[a-z]/;
+	$bots[$botcounter] =~ tr/[A-Z]/[a-z]/;
 	if ($botname = $bots[$botcounter]){&parseresponse($message);}
 }
 
@@ -146,7 +146,7 @@ sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUM
 	my($message) = @_;
 	push (@packs, quotewords('(#|:)', 0, $message)); 
 	@packs = grep(m/\d$/, @packs);
-	if ($pact == 0 and $#packs != 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc system only once per run (pact should be >0 until the whole process is finished)
+	if ($pact == 0 and $#packs != 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
 	{
 		$pact = 1;
 		&ag_reqpack();
@@ -202,27 +202,30 @@ sub ag_closedcc	#deals with DCC closes
 		if ($dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
 		{
 			Irssi::print "AG | transfer successful";	#if so, does next pack/search/bot (in that order)
-			@totags = ();
-			$pact = 1;		#allow pack requests now that 
-			if ($packcounter < $#packs)	
+			if ($packcounter < $#packs)
 			{
+				$pact = 1;		#allow pack requests now that transfer is finished
 				$packcounter += 1;
 				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | Getting next pack in list"; &ag_reqpack(); }, []));
 				Irssi::print "AG | waiting " . $nexdelay . " seconds";
 			}
 			elsif ($termcounter < $#terms)
 			{
+				$pact = 0;		#allow the system to parse new responses
+				@packs = ();		#delete last terms packlist
 				$termcounter += 1;
 				$packcounter = 0;
-				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | Packlist finished. Searching next bot"; &ag_search(); }, []));
+				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | Packlist finished. Searching next term"; &ag_search(); }, []));
 				Irssi::print "AG | waiting " . $nexdelay . " seconds";
 			}
 			elsif ($botcounter < $#bots)
 			{
+				$pact = 0;		#allow the system to parse new responses
+				@packs = ();		#delete last bots packlist
 				$botcounter += 1;
 				$termcounter = 0;
 				$packcounter = 0;
-				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | Bot search complete. Searching next bot"; &ag_search(); }, []));
+				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | All searches complete. Searching next bot"; &ag_search(); }, []));
 				Irssi::print "AG | waiting " . $nexdelay . " seconds";
 			}
 			else	#if last pack on last search on last bot finished, then resets counters and starts over
