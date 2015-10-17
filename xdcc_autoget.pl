@@ -43,7 +43,6 @@ $VERSION = 1.0;
 );
 
 my @totags = ();	#timeout tags (need to be purged between send requests maybe)
-my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 
 my $nexdelay = 5; 	#delay for next pack
 my $dcrdelay = 10; 	#delay if transfer closed prematurely
@@ -51,7 +50,8 @@ my $botdelay = 30;	#max time to wait for the bot to respond
 my $exedelay = 15;	#delay (in minutes) between finishing one run and starting another
 
 my $initflag = 1;	#flag controls whether AG starts on IRSSI boot (if in autorun), or on LOAD
-my $msgflag = 1;
+my $msgflag = 1;	#flag controls whether bot has responded to search request
+my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 
 my $sendprefix = "xdcc send";		#virtually universal xdcc send, cancel, and find prefixes
 my $cancelprefix = "xdcc cancel";
@@ -182,7 +182,7 @@ sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUM
 	my($message) = @_;
 	push (@packs, quotewords('(#|:)', 0, $message)); 
 	@packs = grep(m/\d$/, @packs);
-	@packs = ag_uniq(@packs);
+	@packs = ag_uniq(@packs);		#avoids notifs on packs being sent etc from interfering with packlist
 	if ($pact == 0 and $#packs != 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
 	{
 		$pact = 1;
@@ -190,6 +190,11 @@ sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUM
 	}
 }
 
+sub ag_uniq		#only returns unique entries
+{
+    my %seen;
+    grep !$seen{$_}++, @_;
+}
 
 sub ag_reqpack	#sends the xdcc send request, and retries on failure
 {
@@ -287,11 +292,6 @@ sub ag_closedcc	#deals with DCC closes
 			push(@totags, Irssi::timeout_add_once($dcrdelay * 1000, sub { Irssi::print "AG | retrying: " .$bots[$botcounter] . " " . $packs[$packcounter]; &ag_reqpack(); }, []));
 		}
 	}
-}
-
-sub ag_uniq {
-    my %seen;
-    grep !$seen{$_}++, @_;
 }
 
 sub ag_parseadd		#parses add arguments for storage
