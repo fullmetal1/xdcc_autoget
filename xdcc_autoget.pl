@@ -169,20 +169,23 @@ sub ag_skip
 
 sub ag_getmsg		#runs when bot sends privmsg. Avoid talking to bots to keep this from sending useless shit that breaks things
 {
-	$msgflag = 1;
 	my $message = @_[1];
 	my $botname = @_[2];
 	$botname =~ tr/[A-Z]/[a-z]/;
 	$bots[$botcounter] =~ tr/[A-Z]/[a-z]/;
-	if ($botname == $bots[$botcounter]){&parseresponse($message);}
+	if ($botname == $bots[$botcounter])
+	{
+		$msgflag = 1;
+		&parseresponse($message);
+	}
 }
 
 sub parseresponse	#takes a single message and finds all instances of "#[XDCC NUMBER]:" since most bots reply to !find requests like that. If a bot uses another method and this doesn't work, fix it yourself and send me the code =D
 {
 	my($message) = @_;
-	push (@packs, quotewords('(#|:)', 0, $message)); 
-	@packs = grep(m/\d$/, @packs);
-	@packs = ag_uniq(@packs);		#avoids notifs on packs being sent etc from interfering with packlist
+	my @temp = split(' ', $message);
+	foreach my $n (@temp){ if ($n =~ m{#(\d+):}) {push(@packs, $1);} }	
+	@packs = ag_uniq(@packs);
 	if ($pact == 0 and $#packs >= 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
 	{
 		$pact = 1;
@@ -276,10 +279,11 @@ sub ag_closedcc	#deals with DCC closes
 			}
 			else	#if last pack on last search on last bot finished, then resets counters and starts over
 			{
+				$pact = 0;
+				@packs = ();		#delete last bots packlist
 				$botcounter = 0;
 				$termcounter = 0;
 				$packcounter = 0;
-				$pact = 0;
 				Irssi::signal_remove("message irc notice", "ag_getmsg");
 				Irssi::print "AG | Waiting " . $exedelay . " minutes until next search";
 				Irssi::timeout_add_once($exedelay * 1000 * 60, sub { &ag_run; } , []);
