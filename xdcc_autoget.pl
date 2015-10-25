@@ -32,7 +32,7 @@ use File::Copy;
 use Irssi 20090331;
 use vars qw($VERSION %IRSSI);
 
-$VERSION = 1.0;
+$VERSION = 1.1;
 %IRSSI = (
 	name => "autoget", 
 	description => "XDCC Autoget, for automated searching and downloading of xdcc packs",
@@ -44,13 +44,14 @@ $VERSION = 1.0;
 
 my @totags = ();	#timeout tags (need to be purged between send requests maybe)
 
-my $nexdelay = 5; 	#delay for next pack
+my $nexdelay = 1; 	#delay for next pack
 my $dcrdelay = 10; 	#delay if transfer closed prematurely
 my $botdelay = 30;	#max time to wait for the bot to respond
 my $exedelay = 15;	#delay (in minutes) between finishing one run and starting another
 
 my $initflag = 1;	#flag controls whether AG starts on IRSSI boot (if in autorun), or on LOAD
 my $msgflag = 1;	#flag controls whether bot has responded to search request
+my $episodeflag = 0;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
 my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 
 my $sendprefix = "xdcc send";		#virtually universal xdcc send, cancel, and find prefixes
@@ -68,6 +69,7 @@ my @packs;
 my $termcounter = 0;	#counters for array position
 my $botcounter = 0;
 my $packcounter = 0;
+my $episode = 1;
 
 my $server;		#current server
 
@@ -100,6 +102,7 @@ sub ag_help
 	Irssi::print "ag_bot_delay             : max time to wait for the bot to respond";
 	Irssi::print "ag_interrun_delay        : delay (in minutes, the rest seconds) between finishing a round and starting another";
 	Irssi::print "ag_autorun               : whether to run on startup";
+	Irssi::print "ag_episodic              : search ep 1, if found then search ep 2. Use for series if bot limits search results";
 	Irssi::print "ag_xdcc_send_prefix      : the xdcc message before the pack #";
 	Irssi::print "ag_xdcc_cancel_prefix    : the xdcc message to cancel a transfer";
 	Irssi::print "ag_xdcc_find_prefix      : the xdcc message before the search term";
@@ -132,12 +135,17 @@ sub ag_search		#searches current bot for current term
 {
 	$msgflag = 0;
 	Irssi::signal_add("message irc notice", "ag_getmsg");
-	$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter]");
+	if($episodeflag)
+	{
+		$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $episode" );
+	}
+	else {$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter]");}
 	Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip } , []);		#skip search if no results given
 }
 
 sub ag_skip
 {
+	$episode = 1;		#reset episode counter no matter what on failure 
 	if ($msgflag == 0)
 	{
 		if ($#terms != $termcounter)
@@ -244,7 +252,15 @@ sub ag_closedcc	#deals with DCC closes
 			Irssi::timeout_remove($to);
 		}
 		@totags = ();
-		if ($dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
+		if($episodeflag and $dcc->{'transfd'} == $dcc->{'size'})
+		{
+			$episode++;
+			$pact = 1;		#allow pack requests now that transfer is finished
+			@packs = ();		#delete packlist
+			push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | Getting next episode"; &ag_search(); }, []));
+			Irssi::print "AG | waiting " . $nexdelay . " seconds";
+		}
+		elsif ($dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
 		{
 			Irssi::print "AG | transfer successful";	#if so, does next pack/search/bot (in that order)
 			if ($dcc->{'skipped'} == $dcc->{'size'})
@@ -455,7 +471,7 @@ sub ag_stop
 
 sub ag_settings
 {
-	($nexdelay, $dcrdelay, $botdelay, $exedelay, $initflag, $sendprefix, $cancelprefix, $findprefix, $botsfilename, $searchesfilename) = (Irssi::settings_get_int("ag_next_delay"), Irssi::settings_get_int("ag_dcc_closed_retry_delay"), Irssi::settings_get_int("ag_bot_delay"), Irssi::settings_get_int("ag_interrun_delay"), Irssi::settings_get_bool("ag_autorun"), Irssi::settings_get_str("ag_xdcc_send_prefix"), Irssi::settings_get_str("ag_xdcc_cancel_prefix"), Irssi::settings_get_str("ag_xdcc_find_prefix"), Irssi::settings_get_str("ag_bot_file"), Irssi::settings_get_str("ag_search_file"));
+	($nexdelay, $dcrdelay, $botdelay, $exedelay, $initflag, $episodeflag, $sendprefix, $cancelprefix, $findprefix, $botsfilename, $searchesfilename) = (Irssi::settings_get_int("ag_next_delay"), Irssi::settings_get_int("ag_dcc_closed_retry_delay"), Irssi::settings_get_int("ag_bot_delay"), Irssi::settings_get_int("ag_interrun_delay"), Irssi::settings_get_bool("ag_autorun"), Irssi::settings_get_bool("ag_episodic"), Irssi::settings_get_str("ag_xdcc_send_prefix"), Irssi::settings_get_str("ag_xdcc_cancel_prefix"), Irssi::settings_get_str("ag_xdcc_find_prefix"), Irssi::settings_get_str("ag_bot_file"), Irssi::settings_get_str("ag_search_file"));
 }
 
 sub ag_reset
@@ -494,6 +510,7 @@ Irssi::settings_add_int("ag", "ag_dcc_closed_retry_delay", $dcrdelay);
 Irssi::settings_add_int("ag", "ag_bot_delay", $botdelay);
 Irssi::settings_add_int("ag", "ag_interrun_delay", $exedelay);
 Irssi::settings_add_bool("ag", "ag_autorun", $initflag);
+Irssi::settings_add_bool("ag", "ag_episodic", $episodeflag);
 Irssi::settings_add_str("ag", "ag_xdcc_send_prefix", $sendprefix);
 Irssi::settings_add_str("ag", "ag_xdcc_cancel_prefix", $cancelprefix);
 Irssi::settings_add_str("ag", "ag_xdcc_find_prefix", $findprefix);
