@@ -51,7 +51,7 @@ my $exedelay = 15;	#delay (in minutes) between finishing one run and starting an
 
 my $initflag = 1;	#flag controls whether AG starts on IRSSI boot (if in autorun), or on LOAD
 my $msgflag = 1;	#flag controls whether bot has responded to search request
-my $episodeflag = 1;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
+my $episodeflag = 0;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
 my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 
 my $sendprefix = "xdcc send";		#virtually universal xdcc send, cancel, and find prefixes
