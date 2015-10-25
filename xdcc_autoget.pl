@@ -444,7 +444,6 @@ sub ag_run	#main loop
 	if($runningflag == 0)
 	{
 		$runningflag = 1;
-		Irssi::print "AG | Search and get cycle Initiated";
 		&ag_getbots;
 		foreach my $n (@bots)
 		{
@@ -455,7 +454,12 @@ sub ag_run	#main loop
 		{
 			Irssi::print "AG | Terms: " . $n;
 		}
-		&ag_search;
+		if($#bots < 0 or $#terms < 0) {Irssi::print "AG | No bots or no search terms added. Halting"; &ag_stop;}
+		else 
+		{
+			Irssi::print "AG | Search and get cycle Initiated";
+			&ag_search;
+		}
 	}
 	else {Irssi::print "AG | Another Instance is already running";}
 }
@@ -471,7 +475,7 @@ sub ag_stop
 	if($runningflag == 1)
 	{
 		$runningflag = 0;
-		Irssi::print "AG | killed";
+		Irssi::print "AG | Killed";
 	}
 	Irssi::signal_remove("dcc get receive", "ag_opendcc");
 	$botcounter = 0;
