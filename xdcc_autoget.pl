@@ -51,7 +51,7 @@ my $exedelay = 15;	#delay (in minutes) between finishing one run and starting an
 
 my $initflag = 1;	#flag controls whether AG starts on IRSSI boot (if in autorun), or on LOAD
 my $msgflag = 1;	#flag controls whether bot has responded to search request
-my $episodeflag = 0;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
+my $episodeflag = 1;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
 my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 
 my $sendprefix = "xdcc send";		#virtually universal xdcc send, cancel, and find prefixes
@@ -102,7 +102,7 @@ sub ag_help
 	Irssi::print "ag_bot_delay             : max time to wait for the bot to respond";
 	Irssi::print "ag_interrun_delay        : delay (in minutes, the rest seconds) between finishing a round and starting another";
 	Irssi::print "ag_autorun               : whether to run on startup";
-	Irssi::print "ag_episodic              : search ep 1, if found then search ep 2. Use for series if bot limits search results";
+	Irssi::print "ag_episodic              : search ep 1, if found then search ep 2. Use for series if bot limits search results. Results may vary depending on bot and search term";
 	Irssi::print "ag_xdcc_send_prefix      : the xdcc message before the pack #";
 	Irssi::print "ag_xdcc_cancel_prefix    : the xdcc message to cancel a transfer";
 	Irssi::print "ag_xdcc_find_prefix      : the xdcc message before the search term";
@@ -135,10 +135,7 @@ sub ag_search		#searches current bot for current term
 {
 	$msgflag = 0;
 	Irssi::signal_add("message irc notice", "ag_getmsg");
-	if($episodeflag)
-	{
-		$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $episode" );
-	}
+	if($episodeflag) {$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $episode" );}
 	else {$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter]");}
 	Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip } , []);		#skip search if no results given
 }
