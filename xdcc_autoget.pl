@@ -44,14 +44,15 @@ $VERSION = 1.1;
 
 my @totags = ();	#timeout tags (need to be purged between send requests maybe)
 
-my $nexdelay = 1; 	#delay for next pack
+my $nexdelay = 5; 	#delay for next pack
 my $dcrdelay = 10; 	#delay if transfer closed prematurely
 my $botdelay = 30;	#max time to wait for the bot to respond
 my $exedelay = 15;	#delay (in minutes) between finishing one run and starting another
 
 my $initflag = 1;	#flag controls whether AG starts on IRSSI boot (if in autorun), or on LOAD
+my $runningflag = 0;	#flag keeps ag from running more than one instance of itself at a time
 my $msgflag = 1;	#flag controls whether bot has responded to search request
-my $episodeflag = 1;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
+my $episodeflag = 0;	#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
 my $pact = 0;		#3 state flag to avoid recursive ag_reqpack calls
 
 my $sendprefix = "xdcc send";		#virtually universal xdcc send, cancel, and find prefixes
@@ -440,23 +441,38 @@ sub ag_botrem	#remove bots
 
 sub ag_run	#main loop
 {
-	Irssi::print "AG | Search and get cycle Initiated";
-	&ag_getbots;
-	foreach my $n (@bots)
+	if($runningflag == 0)
 	{
-		Irssi::print "AG | Bots: " . $n;
+		$runningflag = 1;
+		Irssi::print "AG | Search and get cycle Initiated";
+		&ag_getbots;
+		foreach my $n (@bots)
+		{
+			Irssi::print "AG | Bots: " . $n;
+		}
+		&ag_getterms;
+		foreach my $n (@terms)
+		{
+			Irssi::print "AG | Terms: " . $n;
+		}
+		&ag_search;
 	}
-	&ag_getterms;
-	foreach my $n (@terms)
-	{
-		Irssi::print "AG | Terms: " . $n;
-	}
-	&ag_search;
+	else {Irssi::print "AG | Another Instance is already running";}
 }
 
 sub ag_stop
 {
-	Irssi::print "AG | killed";
+	foreach my $to (@totags)
+	{
+		Irssi::timeout_remove($to);
+	}
+	@totags = ();
+	$server->command("msg $bots[$botcounter] $cancelprefix");
+	if($runningflag == 1)
+	{
+		$runningflag = 0;
+		Irssi::print "AG | killed";
+	}
 	Irssi::signal_remove("dcc get receive", "ag_opendcc");
 	$botcounter = 0;
 	$termcounter = 0;
@@ -464,11 +480,6 @@ sub ag_stop
 	@bots = ();
 	@terms = ();
 	@packs = ();
-	foreach my $to (@totags)
-	{
-		Irssi::timeout_remove($to);
-	}
-	@totags = ();
 }
 
 sub ag_settings
@@ -521,7 +532,7 @@ Irssi::settings_add_str("ag", "ag_search_file", $searchesfilename);
 
 Irssi::command_bind("ag_help", "ag_help");
 Irssi::command_bind("ag_run", "ag_run");
-Irssi::command_bind("ag_stop", "ag_run");
+Irssi::command_bind("ag_stop", "ag_stop");
 Irssi::command_bind("ag_server", "ag_server");
 Irssi::command_bind("ag_add", "ag_add");
 Irssi::command_bind("ag_rem", "ag_rem");
