@@ -69,6 +69,7 @@ my $runningflag = 0;							#flag keeps ag from running more than one instance of
 my $msgflag = 1;							#flag controls whether bot has responded to search request
 my $addflag = 0;							#flag controls whether bot has sent a pack
 my $episodeflag = Irssi::settings_get_bool("ag_episodic");		#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
+my $formatflag = 1;
 my $pact = 0;								#3 state flag to avoid recursive ag_reqpack calls
 
 my $sendprefix = Irssi::settings_get_str("ag_xdcc_send_prefix");		#virtually universal xdcc send, cancel, and find prefixes
@@ -97,6 +98,7 @@ sub ag_init		#init system
 {
 	Irssi::print "AG | Autoget initiated";
 	Irssi::print "AG | /ag_help for help";
+
 	&ag_initserver;
 }
 
@@ -162,7 +164,7 @@ sub ag_getfinished		#reads in finished packs list
 	close(finished);
 }
 
-sub ag_clearcache		#resets cache of saved packs
+sub ag_clearcache		#clears cache of saved packs
 {
 	unlink $finishedfilename;
 	open(finished, ">>", $finishedfilename);
@@ -178,11 +180,15 @@ sub ag_search		#searches current bot for current term
 		my $ep = sprintf("%.2d", $episode);
 		if ($format ne "")
 		{
-			$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $ep $format" );
-			push(@msgtags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_formatlessepisodicsearch; } , []));		#retry search if no results given, but without the format
+			if ($formatflag)
+			{
+				$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $ep $format" );
+				if ($episode eq 1){push(@msgtags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_formatlessepisodicsearch; } , []));}		#retry search if no results given, but without the format
+				else {push(@msgtags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip; } , []));}
+			}
+			else {&ag_formatlessepisodicsearch;}
 		}
 		else {&ag_formatlessepisodicsearch;}
-
 	}
 	else 
 	{
@@ -193,6 +199,7 @@ sub ag_search		#searches current bot for current term
 
 sub ag_formatlessepisodicsearch		#redo above, but without formatting
 {
+	$formatflag = 0;
 	my $ep = sprintf("%.2d", $episode);
 	$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $ep" );
 	push(@msgtags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip; } , []));		#skip search if no results given
@@ -210,10 +217,10 @@ sub ag_skip
 		}
 		elsif ($#terms != $termcounter)
 		{
-			
 			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. Skipping to next search";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
 			$episode = 1;
+			$formatflag = 1;
 			$termcounter++;
 			&ag_search;
 		}
@@ -221,8 +228,9 @@ sub ag_skip
 		{
 			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. Skipping to next bot";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
-			$termcounter = 0;
 			$episode = 1;
+			$formatflag = 1;
+			$termcounter = 0;
 			$botcounter++;
 			&ag_search;
 		}
@@ -230,9 +238,10 @@ sub ag_skip
 		{
 			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. End of list";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
+			$episode = 1;
+			$formatflag = 1;
 			$botcounter = 0;
 			$termcounter = 0;
-			$episode = 1;
 			Irssi::print "AG | Waiting " . $exedelay . " minutes until next search";
 			Irssi::timeout_add_once($exedelay * 1000 * 60, sub { &ag_run; } , []);
 			$runningflag = 0;
@@ -289,7 +298,7 @@ sub ag_parseresponse	#takes a single message and finds all instances of "#[XDCC 
 		$pact = 1;
 		&ag_reqpack();
 	}
-	elsif ($#packs <= 0)
+	elsif ($#packs < 0)
 	{
 		$msgflag = 0;
 		push(@msgtags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_skip(); }, []));
