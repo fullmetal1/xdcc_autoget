@@ -52,9 +52,7 @@ Irssi::settings_add_str($IRSSI{'name'}, "ag_xdcc_send_prefix", "xdcc send");
 Irssi::settings_add_str($IRSSI{'name'}, "ag_xdcc_cancel_prefix", "xdcc cancel");
 Irssi::settings_add_str($IRSSI{'name'}, "ag_find_prefix", "!find");
 Irssi::settings_add_str($IRSSI{'name'}, "ag_format", "");
-Irssi::settings_add_str($IRSSI{'name'}, "ag_bot_file", File::HomeDir->my_home . "/bots.txt");
-Irssi::settings_add_str($IRSSI{'name'}, "ag_search_file", File::HomeDir->my_home . "/searches.txt");
-Irssi::settings_add_str($IRSSI{'name'}, "ag_cache_file", File::HomeDir->my_home . "/finished.txt");
+Irssi::settings_add_str($IRSSI{'name'}, "ag_folder", File::HomeDir->my_home);
 
 my @totags = ();	#timeout tags (need to be purged between send requests maybe)
 my @msgtags = ();	#timeout tags for search results
@@ -76,9 +74,10 @@ my $sendprefix = Irssi::settings_get_str("ag_xdcc_send_prefix");		#virtually uni
 my $cancelprefix = Irssi::settings_get_str("ag_xdcc_cancel_prefix");
 my $findprefix = Irssi::settings_get_str("ag_find_prefix");			#format option for episodic. Can be edited if you want a certain size, eg 720p; x264; aXXo; etc
 my $format = Irssi::settings_get_str("ag_format");			#format option for episodic. Can be edited if you want a certain size, eg 720p; x264; aXXo; etc
-my $botsfilename = Irssi::settings_get_str("ag_bot_file");
-my $searchesfilename = Irssi::settings_get_str("ag_search_file");
-my $finishedfilename = Irssi::settings_get_str("ag_cache_file");
+my $folder = Irssi::settings_get_str("ag_folder");
+my $botsfilename = $folder . "/bots.txt";
+my $searchesfilename = $folder . "/searches.txt";
+my $cachefilename = $folder . "/cache.txt";
 
 my $dccflag = 0;	#flag so that dccs aren't mistakenly thought of belonging to AG
 
@@ -130,8 +129,7 @@ sub ag_help
 	Irssi::print "ag_xdcc_cancel_prefix    : the xdcc message to cancel a transfer";
 	Irssi::print "ag_xdcc_find_prefix      : the xdcc message before the search term";
 	Irssi::print "ag_format                : universal string appended to the end of each search in episodic. Use if more than one format exists";
-	Irssi::print "ag_bot_file              : where your bot list is stored";
-	Irssi::print "ag_search_file           : where your search list is stored}";
+	Irssi::print "ag_folder                : Location for data files. ~/.irssi/ reccomended";
 }
 
 sub ag_server	#should only be run when you have a server, or it'll break (probably unfixable without a bunch of ugly dumb checks everywhere)
@@ -157,7 +155,7 @@ sub ag_getterms		#reads in search term list
 
 sub ag_getfinished		#reads in finished packs list
 {
-	open(finished, "<", $finishedfilename);
+	open(finished, "<", $cachefilename);
 	@finished = <finished>;
 	chomp(@finished);
 	@finished = ag_uniq(@finished);
@@ -166,8 +164,8 @@ sub ag_getfinished		#reads in finished packs list
 
 sub ag_clearcache		#clears cache of saved packs
 {
-	unlink $finishedfilename;
-	open(finished, ">>", $finishedfilename);
+	unlink $cachefilename;
+	open(finished, ">>", $cachefilename);
 	close(finished);
 }
 
@@ -342,7 +340,7 @@ sub ag_opendcc	#runs on DCC recieve init
 
 sub ag_filecomp		#save finished downloads
 {
-	open(finished, ">>", $finishedfilename);
+	open(finished, ">>", $cachefilename);
 	print finished $bots[$botcounter] . " " . $packs[$packcounter] . "\n";		#print to file
 	close(finished);	
 	&ag_getfinished;
@@ -613,8 +611,8 @@ sub ag_reset
 	my $initflag = 1;	
 	my $sendprefix = "xdcc send";
 	my $findprefix = "!find";
-	my $botsfilename = "$FindBin::Bin/.irssi/scripts/bots.txt";
-	my $searchesfilename = "$FindBin::Bin/.irssi/scripts/searches.txt";
+	my $folder = File::HomeDir->my_home;
+
 	Irssi::settings_get_int("ag_next_delay");
 	Irssi::settings_get_int("ag_dcc_closed_retry_delay");
 	Irssi::settings_get_int("ag_bot_delay");
@@ -622,8 +620,7 @@ sub ag_reset
 	Irssi::settings_get_bool("ag_autorun");
 	Irssi::settings_get_str("ag_xdcc_send_prefix");
 	Irssi::settings_get_str("ag_xdcc_find_prefix");
-	Irssi::settings_get_str("ag_bot_file");
-	Irssi::settings_get_str("ag_search_file");
+	Irssi::settings_get_str("ag_folder");
 	Irssi::print "AG | all settings reset to default values";
 }
 
@@ -647,7 +644,7 @@ open(bots, ">>", $botsfilename);		#makes bots, searches, and finished file if th
 close(bots);
 open(searches, ">>", $searchesfilename);
 close(searches);
-open(finished, ">>", $finishedfilename);
+open(finished, ">>", $cachefilename);
 close(finished);
 if ($initflag) {&ag_init();}
 
