@@ -200,13 +200,13 @@ sub ag_formatlessepisodicsearch		#redo above, but without formatting
 	$formatflag = 0;
 	my $ep = sprintf("%.2d", $episode);
 	$server->command("msg $bots[$botcounter] $findprefix $terms[$termcounter] $ep" );
-	push(@msgtags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip; } , []));		#skip search if no results given
+	if ($episode eq 1) {push(@msgtags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip; } , []));}		#skip search if no results given
 }
 
 sub ag_skip
 {
 	if ($msgflag == 0)
-	{		
+	{
 		if ($episodeflag and $addflag)
 		{
 			$addflag = 0;
@@ -248,18 +248,12 @@ sub ag_skip
 }
 
 sub ag_getmsg		#runs when bot sends privmsg. Avoid talking to bots to keep this from sending useless shit that breaks things
-{
+{	
 	my $message = @_[1];
 	my $botname = @_[2];
 	$botname =~ tr/[A-Z]/[a-z]/;
 	$bots[$botcounter] =~ tr/[A-Z]/[a-z]/;
-
-	foreach my $to (@msgtags)	#remove timeouts for skipping if a pack has been recieved
-	{
-		Irssi::timeout_remove($to);
-	}
-	@msgtags = ();
-
+	
 	if ($botname == $bots[$botcounter])
 	{
 		$msgflag = 1;
@@ -294,12 +288,12 @@ sub ag_parseresponse	#takes a single message and finds all instances of "#[XDCC 
 	{
 		$msgflag = 1;
 		$pact = 1;
+		foreach my $to (@msgtags)	#remove timeouts for skipping if a pack has been recieved
+		{
+			Irssi::timeout_remove($to);
+		}
+		@msgtags = ();
 		&ag_reqpack();
-	}
-	elsif ($#packs < 0)
-	{
-		$msgflag = 0;
-		push(@msgtags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_skip(); }, []));
 	}
 }
 
@@ -336,12 +330,23 @@ sub ag_opendcc	#runs on DCC recieve init
 		Irssi::signal_add("dcc get receive", "ag_opendcc");
 		$dccflag = 1;
 	}
+	foreach my $n (@finished)		#don't redownload finished packs
+	{
+		if ($n eq $gdcc->{'arg'})
+		{
+			$gdcc->{'transfd'} = $gdcc->{'size'};
+			&ag_closedcc(@_);
+		}
+		last if ($n eq "$bots[$botcounter] $1");
+	}
 }
 
 sub ag_filecomp		#save finished downloads
 {
+	my $filename = @_[0];
 	open(finished, ">>", $cachefilename);
-	print finished $bots[$botcounter] . " " . $packs[$packcounter] . "\n";		#print to file
+	print finished $bots[$botcounter] . " " . $packs[$packcounter] . "\n";		#print pack to file	
+	print finished $filename . "\n";		#print name to file	
 	close(finished);	
 	&ag_getfinished;
 }
@@ -362,12 +367,12 @@ sub ag_closedcc	#deals with DCC closes
 		}
 		@totags = ();
 		
-		if ($dcc->{'transfd'} == $dcc->{'size'}){&ag_filecomp}
+		if ($dcc->{'transfd'} == $dcc->{'size'}){&ag_filecomp($dcc->{'arg'})}
 		
 		if($episodeflag and $dcc->{'transfd'} == $dcc->{'size'})
 		{
 			$episode++;
-			$pact = 1;		#allow pack requests now that transfer is finished
+			$pact = 0;		#allow pack requests now that transfer is finished
 			@packs = ();		#delete packlist
 			$packcounter = 0;
 			push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { Irssi::print "AG | Getting next episode"; &ag_search(); }, []));
@@ -376,7 +381,6 @@ sub ag_closedcc	#deals with DCC closes
 			{
 				$server->command("msg $bots[$botcounter] $cancelprefix");		#workaround because IRSSI doesn't actually 'get' packs if they're already downloaded, causing long stalls if left unattended.
 			}
-
 		}
 		elsif ($dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
 		{
