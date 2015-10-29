@@ -171,6 +171,11 @@ sub ag_clearcache		#clears cache of saved packs
 
 sub ag_search		#searches current bot for current term
 {
+	foreach my $to (@skiptags)	#remove timeouts for skipping if a pack has been recieved
+	{
+		Irssi::timeout_remove($to);
+	}
+	@skiptags = ();
 	$msgflag = 0;
 	Irssi::signal_add("message irc notice", "ag_getmsg");
 	if($episodeflag)
@@ -210,7 +215,13 @@ sub ag_skip
 
 	if ($msgflag == 0)
 	{
-		if ($#terms != $termcounter)
+		if($episodeflag and !$addflag)
+		{
+			Irssi::signal_remove("message irc notice", "ag_getmsg");
+			$episode++;
+			&ag_search;
+		}
+		elsif ($#terms != $termcounter)
 		{
 			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. Skipping to next search";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
@@ -276,25 +287,22 @@ sub ag_parseresponse	#takes a single message and finds all instances of "#[XDCC 
 			&ag_getfinished;
 			foreach my $n (@finished)		#don't redownload finished packs
 			{
-				if ($n eq "$bots[$botcounter] $1")
-				{
-					$addflag = 0;
-				}
+				if ($n eq "$bots[$botcounter] $1") {$addflag = 0;}
 				last if ($n eq "$bots[$botcounter] $1");
 			}
 			if ($addflag) {push(@packs, $1);}
 		}
 	}
 	@packs = ag_uniq(@packs);
-	if ($pact == 0 and $#packs >= 0 and $packs[$packcounter] ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
+	if ($pact == 0 and $#packs >= 0 and $packs[$packcounter] ne "" and $bots[$botcounter]ne "")		#initiallizes the actual xdcc get system only once per search term/bot (pact should be >0 until the whole process is finished)
 	{
 		$pact = 1;
 		&ag_reqpack();
 	}
-	elsif ($#packs < 0)
+	elsif ($#packs < 0 and $pact == 0)
 	{
 		$msgflag = 0;
-		push(@skiptags, Irssi::timeout_add_once($botdelay * 1000, sub { &ag_skip; } , []));
+		push(@skiptags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_skip; } , []));
 	}
 }
 
@@ -306,6 +314,11 @@ sub ag_uniq		#only returns unique entries
 
 sub ag_reqpack	#sends the xdcc send request, and retries on failure
 {
+	foreach my $to (@skiptags)	#remove timeouts for skipping if a pack has been recieved
+	{
+		Irssi::timeout_remove($to);
+	}
+	@skiptags = ();
 	if ($dccflag == 0){Irssi::signal_add("dcc get receive", "ag_opendcc");}		#init DCC recieve init flag
 	$dccflag = 1;
 	$server->command("msg $bots[$botcounter] $sendprefix $packs[$packcounter]");
@@ -394,7 +407,7 @@ sub ag_closedcc	#deals with DCC closes
 				$server->command("msg $bots[$botcounter] $cancelprefix");		#workaround because IRSSI doesn't actually 'get' packs if they're already downloaded, causing long stalls if left unattended.
 			}
 		}
-		elsif ($dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
+		elsif (!$episodeflag and $dcc->{'transfd'} == $dcc->{'size'})	#checks if the transfer actually ran to completion
 		{
 			Irssi::print "AG | transfer successful";	#if so, does next pack/search/bot (in that order)
 			if ($dcc->{'skipped'} == $dcc->{'size'})
