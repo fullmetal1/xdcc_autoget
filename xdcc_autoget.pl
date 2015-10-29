@@ -208,7 +208,6 @@ sub ag_skip
 	}
 	@skiptags = ();
 
-	Irssi::print "AG | SKIP $msgflag $episodeflag $#terms $termcounter $#bots $botcounter";
 	if ($msgflag == 0)
 	{
 		if ($#terms != $termcounter)
