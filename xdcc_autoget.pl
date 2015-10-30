@@ -223,7 +223,6 @@ sub ag_skip
 		}
 		elsif ($#terms != $termcounter)
 		{
-			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. Skipping to next search";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
 			$episode = 1;
 			$formatflag = 1;
@@ -232,7 +231,6 @@ sub ag_skip
 		}
 		elsif ($#bots != $botcounter)
 		{
-			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. Skipping to next bot";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
 			$episode = 1;
 			$formatflag = 1;
@@ -242,7 +240,6 @@ sub ag_skip
 		}
 		else
 		{
-			Irssi::print "AG | No new and unfinished packs found while searching ". $terms[$termcounter] . " or bot " . $bots[$botcounter] . " unresponsive or nonexistent. End of list";
 			Irssi::signal_remove("message irc notice", "ag_getmsg");
 			$episode = 1;
 			$formatflag = 1;
@@ -379,6 +376,7 @@ sub ag_closedcc	#deals with DCC closes
 	$bots[$botcounter] =~ tr/[A-Z]/[a-z]/;
 	if ($botname eq $bots[$botcounter])
 	{ 
+		Irssi::signal_remove("message irc notice", "ag_getmsg");
 		if ($dccflag == 0) {Irssi::signal_add("dcc get receive", "ag_opendcc");}	#if so, reinits DCC get signal for the next pack
 		$dccflag = 1;
 		foreach my $to (@totags)	#clears timeouts to defuckify everything
