@@ -222,7 +222,7 @@ sub ag_getmsg		#runs when bot sends privmsg. Avoid talking to bots to keep this 
 	{
 		&ag_remtimeouts;	#stop any skips from happening
 		&ag_getpacks($message);	#and check for any new packs in the message
-		if (!$msgflag and $#packs < 0) { push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_skip; } , [])); }	#set up only one possible skip per search
+		if ($#packs < 0) { push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_skip; } , [])); }	#set up only one possible skip per search
 		if($#packs >= 0){ &ag_packrequest; }	#if there are any packs,
 		$msgflag = 1;		#let everyone know that the current bot has replied
 	}
@@ -291,7 +291,6 @@ sub ag_opendcc	#runs on DCC recieve init
 sub ag_skip
 {
 	&ag_remtimeouts;	#stop any other skips
-	#Irssi::print "AG | ag-skip debug $episodicflag $packcounter $#packs $termcounter $#terms $botcounter $#bots";
 	$reqpackflag = 0;		#allow pack requests now that transfer is finished
 	if($episodicflag)
 	{
