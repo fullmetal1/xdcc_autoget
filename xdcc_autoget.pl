@@ -100,15 +100,26 @@ sub ag_init		#init system
 	Irssi::print "AG | /ag_help for help";
 	&ag_initserver;
 	&ag_getbots;
+	my $m;
 	foreach my $n (@bots)
 	{
-		Irssi::print "AG | Bots: " . $n;
+		$m = $m . $n . ", ";
 	}
+	Irssi::print "AG | Bots: " . $m;
+	$m = "";
 	&ag_getterms;
 	foreach my $n (@terms)
 	{
-		Irssi::print "AG | Terms: " . $n;
+		$m = $m . $n . ", ";
 	}
+	Irssi::print "AG | Terms: " . $m;
+	if ($episodicflag)
+	{
+		Irssi::print "AG | Episodic: Yes";
+		Irssi::print "AG | Preffered format: $format";
+	}
+	else {Irssi::print "AG | Episodic: No";}
+	Irssi::print "AG | Data folder: $folder";
 }
 
 sub ag_initserver	#init server
