@@ -98,8 +98,17 @@ sub ag_init		#init system
 {
 	Irssi::print "AG | Autoget initiated";
 	Irssi::print "AG | /ag_help for help";
-
 	&ag_initserver;
+	&ag_getbots;
+	foreach my $n (@bots)
+	{
+		Irssi::print "AG | Bots: " . $n;
+	}
+	&ag_getterms;
+	foreach my $n (@terms)
+	{
+		Irssi::print "AG | Terms: " . $n;
+	}
 }
 
 sub ag_initserver	#init server
@@ -601,15 +610,7 @@ sub ag_run	#main loop
 		Irssi::signal_add("message irc notice", "ag_getmsg");
 		$runningflag = 1;
 		&ag_getbots;
-		foreach my $n (@bots)
-		{
-			Irssi::print "AG | Bots: " . $n;
-		}
 		&ag_getterms;
-		foreach my $n (@terms)
-		{
-			Irssi::print "AG | Terms: " . $n;
-		}
 		if($#bots < 0 or $#terms < 0) {Irssi::print "AG | No bots or no search terms added. Halting"; &ag_stop;}
 		else 
 		{
@@ -622,24 +623,37 @@ sub ag_run	#main loop
 
 sub ag_stop
 {
+	Irssi::signal_remove("dcc get receive", "ag_opendcc");
+	Irssi::signal_remove("message irc notice", "ag_getmsg");
+
 	foreach my $to (@totags)
 	{
 		Irssi::timeout_remove($to);
 	}
 	@totags = ();
+
 	&ag_message("msg $bots[$botcounter] $cancelprefix");
+
 	if($runningflag == 1)
 	{
 		$runningflag = 0;
 		Irssi::print "AG | Killed";
 	}
-	Irssi::signal_remove("dcc get receive", "ag_opendcc");
-	$botcounter = 0;
-	$termcounter = 0;
-	$packcounter = 0;
-	@bots = ();
+	$msgflag = 1;
+	$termisepisodicflag = 0;
+	$formatflag = 1;
+	$reqpackflag = 0;
+	$downloadflag = 0;
+	$newpackflag = 1;
+	$dccflag = 0;
 	@terms = ();
+	@bots = ();
 	@packs = ();
+	@finished = ();
+	$termcounter = 0;
+	$botcounter = 0;	
+	$packcounter = 0;
+	$episode = 1;
 }
 
 sub ag_reset
