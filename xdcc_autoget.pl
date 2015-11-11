@@ -23,6 +23,7 @@
 #      ag_search_file                : where your search list is stored
 
 use strict;
+use warnings;
 
 use Irssi;
 use Text::ParseWords;
@@ -124,7 +125,6 @@ sub ag_init		#init system
 
 sub ag_initserver	#init server
 {
-	$server = "";
 	$server = Irssi::active_server();	#keep trying to get server until it works, then continue after 5 seconds
 	if ($server !~ m/^Irssi::Irc::Server=HASH/) {Irssi::timeout_add_once(1000, sub {&ag_initserver;} , []);}
 	else {Irssi::timeout_add_once(5000, sub {&ag_run;} , []);}
@@ -500,7 +500,7 @@ sub ag_parseadd		#parses add arguments for storage
 		print FILE $arg . "\n";		#print to file
 	}
 	close(FILE);
-	copy($file, "/tmp/temp") or croak "COPY FAILED";	#copy to temp file so that duplicate lines [searches/bots] can be removed
+	copy($file, "/tmp/temp");	#copy to temp file so that duplicate lines [searches/bots] can be removed
 	unlink "$file";
 	open(TEMP, "<", "/tmp/temp");
 	open(FILE, ">", $file);
@@ -543,8 +543,8 @@ sub ag_parserem		#parses remove arguments for deletion from file
 		close(TEMP);
 	}
 	close(TEMP2);
-	copy("/tmp/temp2", $file) or croak "COPY FAILED";	#rewrite old file
-	copy($file, "/tmp/temp") or croak "COPY FAILED";
+	copy("/tmp/temp2", $file);	#rewrite old file
+	copy($file, "/tmp/temp");
 	unlink "$file";
 	open(TEMP, "<", "/tmp/temp");
 	open(SEARCHES, ">", $file);
