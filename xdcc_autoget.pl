@@ -691,7 +691,7 @@ sub ag_restart
 	$downloadflag = 0;
 	$newpackflag = 1;
 	$dccflag = 0;
-	&ag_search;
+	Irssi::signal_add("server connected", "ag_initserver");
 }
 sub ag_reset
 {
