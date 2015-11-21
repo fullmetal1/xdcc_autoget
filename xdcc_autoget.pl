@@ -516,6 +516,8 @@ sub ag_parseadd		#parses add arguments for storage
 	}
 	unlink "/tmp/temp";
 	close(FILE);
+	&ag_getbots;
+	&ag_getterms;
 }
 
 sub ag_parserem		#parses remove arguments for deletion from file
@@ -621,6 +623,8 @@ sub ag_run	#main loop
 	if($runningflag == 0)
 	{
 		$runningflag = 1;
+		&ag_getbots;
+		&ag_getterms;
 		if($#bots < 0 or $#terms < 0) {Irssi::print "AG | No bots or no search terms added. Halting"; &ag_stop;}
 		else 
 		{
@@ -735,6 +739,7 @@ close(FINISHED);
 if ($initflag) {Irssi::signal_add("server connected", "ag_initserver");}
 
 Irssi::signal_add("server disconnected", "ag_restart");
+Irssi::signal_add("server lag disconnect", "ag_restart");
 Irssi::signal_add("dcc closed", "ag_closedcc");
 Irssi::signal_add("setup changed", "ag_setsettings");
 
