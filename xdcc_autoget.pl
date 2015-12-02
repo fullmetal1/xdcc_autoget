@@ -594,6 +594,7 @@ sub ag_add	#add search terms
 		return;
 	}
 	ag_parseadd($searchesfilename, @args);
+	&ag_list;
 }
 
 sub ag_rem	#remove ssearch terms
@@ -607,6 +608,7 @@ sub ag_rem	#remove ssearch terms
 		return;
 	}
 	ag_parserem($searchesfilename, @args);
+	&ag_list;
 }
 
 sub ag_botadd	#add bots
@@ -620,6 +622,7 @@ sub ag_botadd	#add bots
 		return;
 	}
 	ag_parseadd($botsfilename, @args);
+	&ag_list;
 }
 
 sub ag_botrem	#remove bots
@@ -633,6 +636,7 @@ sub ag_botrem	#remove bots
 		return;
 	}
 	ag_parserem($botsfilename, @args);
+	&ag_list;
 }
 
 sub ag_run	#main loop
