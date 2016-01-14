@@ -71,12 +71,10 @@ my $initflag;			#flag controls whether AG starts on IRSSI boot (if in autorun), 
 my $runningflag = 0;		#flag keeps ag from running more than one instance of itself at a time
 my $msgflag = 1;		#flag controls whether bot has responded to search request
 my $getmsgflag = 0;		#flag keeps track of getmsg signals
-my $termisepisodicflag = 0;	#flag controls whether 
 my $episodicflag;		#flag controls whether to search episode by episode (eg instead of searching boku no pice, it'll search for boku no pico 1, then boku no pico 2, etc as long as results show up)
 my $formatflag = 1;		#flag controls whether a format is appended to the end of an episodic search string
 my $reqpackflag = 0;		#flag to avoid multiple download requests
 my $downloadflag = 0;		#flag to avoid multiple download requests
-my $newpackflag = 1;
 
 my $sendprefix;		#virtually universal xdcc send, cancel, and find prefixes
 my $cancelprefix;
@@ -282,7 +280,7 @@ sub ag_getpacks
 	
 	foreach my $m (@temp)		#find packs (#[NUMBER]: format)
 	{ 
-		$newpackflag = 1;
+		my $newpackflag = 1;
 		if ($m =~ m{#(\d+):})
 		{
 			foreach my $n (@finished)		#don't redownload finished packs
@@ -321,7 +319,7 @@ sub ag_opendcc	#runs on DCC recieve init
 	if ($botname eq $bots[$botcounter])	#if it's our bot, let user know, and stop any further AG pack requests until finished
 	{
 		Irssi::signal_add("dcc destroyed", "ag_closedcc");
-		Irssi::signal_remove("dcc request", "ag_opendcc");		#stops any suplicate sends (there should only ever be one)
+		Irssi::signal_remove("dcc request", "ag_opendcc");		#stops any duplicate sends (there should only ever be one)
 		Irssi::signal_remove("message irc notice", "ag_getmsg");
 		$getmsgflag = 0;
 
@@ -449,11 +447,20 @@ sub ag_closedcc
 		
 		if($episodicflag and $dcc->{'transfd'} == $dcc->{'size'})
 		{
-			@packs = ();		#delete packlist
-			$packcounter = 0;
-			$episode++;
-			$statusbarmessage = "Waiting $nexdelay seconds"; 
-			push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_search; }, []));
+			if ($packcounter < $#packs)
+			{
+				$packcounter++;
+				$statusbarmessage = "Waiting $nexdelay seconds"; 
+				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_reqpack; }, []));
+			}
+			else
+			{
+				@packs = ();		#delete packlist
+				$packcounter = 0;
+				$episode++;
+				$statusbarmessage = "Waiting $nexdelay seconds"; 
+				push(@totags, Irssi::timeout_add_once($nexdelay * 1000, sub { &ag_search; }, []));
+			}
 		}
 		elsif ($dcc->{'transfd'} == $dcc->{'size'})	
 		{
@@ -659,6 +666,13 @@ sub ag_run	#main loop
 		$runningflag = 1;
 		&ag_getbots;
 		&ag_getterms;
+
+		my $msgflag = 1;		#flag controls whether bot has responded to search request
+		my $getmsgflag = 0;		#flag keeps track of getmsg signals
+		my $formatflag = 1;		#flag controls whether a format is appended to the end of an episodic search string
+		my $reqpackflag = 0;		#flag to avoid multiple download requests
+		my $downloadflag = 0;		#flag to avoid multiple download requests
+		
 		if($#bots < 0 or $#terms < 0) {	$statusbarmessage = "No bots or no search terms."; push(@totags, Irssi::timeout_add_once(1000, sub { &ag_run; }, []));}
 		else 
 		{
@@ -687,11 +701,9 @@ sub ag_stop
 		$statusbarmessage = "Inactive";
 	}
 	$msgflag = 1;
-	$termisepisodicflag = 0;
 	$formatflag = 1;
 	$reqpackflag = 0;
 	$downloadflag = 0;
-	$newpackflag = 1;
 	$dccflag = 0;
 	@terms = ();
 	@bots = ();
@@ -723,11 +735,9 @@ sub ag_restart
 		$runningflag = 0;
 	}
 	$msgflag = 1;
-	$termisepisodicflag = 0;
 	$formatflag = 1;
 	$reqpackflag = 0;
 	$downloadflag = 0;
-	$newpackflag = 1;
 	$dccflag = 0;
 	Irssi::signal_add("server connected", "ag_initserver");
 }
