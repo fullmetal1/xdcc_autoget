@@ -769,7 +769,6 @@ sub ag_stop
 	@terms = ();
 	@bots = ();
 	@packs = ();
-	@finished = ();
 	$botcounter = 0;	
 }
 
