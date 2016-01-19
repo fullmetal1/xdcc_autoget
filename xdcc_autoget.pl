@@ -489,6 +489,11 @@ sub ag_closedcc
 
 			$reqpackflag[$botcounter] = 0;
 			
+			if (!$skipunfinishedflag[$botcounter])
+			{
+				$filename =~ tr/[ ']/[__]/;
+				@filenames = grep { $_ ne $filename } @filenames;		#remove the file from the list of files being transferred
+ 			}
 			&ag_remtimeouts($botcounter);
 					
 			if ($dcc->{'skipped'} == $dcc->{'size'})
@@ -500,8 +505,6 @@ sub ag_closedcc
 			{
 				if (!$skipunfinishedflag[$botcounter])
 				{
-					$filename =~ tr/[ ']/[__]/;
-					@filenames = grep { $_ ne $filename } @filenames;		#remove the file from the list of files being transferred
 	 				ag_addfinished($dcc->{'arg'}, $botcounter);
 	 			}
 				$skipunfinishedflag[$botcounter] = 0;				#reset any skip flags
@@ -708,8 +711,6 @@ sub ag_botrem	#remove bots
 
 sub ag_run	#main loop
 {
-	Irssi::signal_add("dcc request", "ag_opendcc");		#init DCC recieve init flag
-	Irssi::signal_add("message irc notice", "ag_getmsg");
 	if (!$initflag) {ag_server(Irssi::active_server());}
 	if($runningflag == 0)
 	{
@@ -742,26 +743,23 @@ sub ag_run	#main loop
 }
 
 sub ag_stop
-{
-	Irssi::signal_remove("dcc request", "ag_opendcc");
-	Irssi::signal_remove("message irc notice", "ag_getmsg");
-	
+{	
 	my $botcounter = 0;
 	foreach my $bot (@bots)
 	{
 		&ag_remtimeouts($botcounter);	#stop any skips from happening
 		ag_message("msg $bot $cancelprefix");
-		$getmsgflag[$botcounter] = 0;
 		$botcounter++;
-		@msgflag = ();
-		@reqpackflag = ();
-		@downloadflag = ();
-		@skipunfinishedflag = ();
-		@termcounter = ();
-		@packcounter = ();
-		@episode = ();
-		@filenames = ();
 	}
+	@getmsgflag = ();
+	@msgflag = ();
+	@reqpackflag = ();
+	@downloadflag = ();
+	@skipunfinishedflag = ();
+	@termcounter = ();
+	@packcounter = ();
+	@episode = ();
+	@filenames = ();
 
 	if($runningflag == 1)
 	{
@@ -778,25 +776,7 @@ sub ag_stop
 sub ag_restart
 {
 	$statusbarmessage = "No Connection";
-	Irssi::signal_remove("dcc request", "ag_opendcc");
-	Irssi::signal_remove("message irc notice", "ag_getmsg");
-	
-	my $botcounter = 0;
-	foreach my $bot (@bots)
-	{
-		$getmsgflag[$botcounter] = 0;
-		&ag_remtimeouts($botcounter);
-		ag_message("msg $bot $cancelprefix");
-		$botcounter++;
-	}
-
-	if($runningflag == 1)
-	{
-		$runningflag = 0;
-	}
-	@msgflag = ();
-	@reqpackflag = ();
-	@downloadflag = ();
+	&ag_stop();
 	Irssi::signal_add("server connected", "ag_initserver");
 }
 sub ag_reset
@@ -841,6 +821,8 @@ Irssi::timeout_add(100, sub { Irssi::statusbars_recreate_items(); Irssi::statusb
 &ag_init;
 if ($initflag) {Irssi::signal_add("server connected", "ag_initserver");}
 
+Irssi::signal_add("dcc request", "ag_opendcc");
+Irssi::signal_add("message irc notice", "ag_getmsg");
 Irssi::signal_add("server disconnected", "ag_restart");
 Irssi::signal_add("server lag disconnect", "ag_restart");
 Irssi::signal_add("setup changed", "ag_setsettings");
