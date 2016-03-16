@@ -50,7 +50,7 @@ use File::Copy;
 use Try::Tiny;
 use vars qw($VERSION %IRSSI);
 
-$VERSION = "2.0";
+$VERSION = "2.1";
 %IRSSI = (
 	name => "autoget", 
 	description => "XDCC Autoget, for automated searching and downloading of xdcc packs",
@@ -270,11 +270,11 @@ sub ag_search		#searches bots for packs
 	$msgflag[$botcounter] = 0;	#unset message flag so that ag_skip knows no important message has arrived
 	if($episodicflag)	
 	{
-		my $searchterm;
+		my $searchterm = $terms[$termcounter[$botcounter]];
 		my @words = split(/#/, $terms[$termcounter[$botcounter]]);
 		my $ep = sprintf("%.2d", $episode[$botcounter]);
 		if ($#words > 0){$searchterm = "$words[0]$ep$words[1]";}
-		else {$searchterm = "$words[0] $ep";}
+		elsif ($words[0] ne $searchterm) {$searchterm = "$words[0] $ep";}
 
 		ag_message("msg $bots[$botcounter] $findprefix $searchterm" );
 		push(@{$totags[$botcounter]}, Irssi::timeout_add_once($botdelay * 1000, sub { ag_skip($botcounter); } , []));
