@@ -272,7 +272,7 @@ sub ag_search		#searches bots for packs
 	{
 		my $searchterm = $terms[$termcounter[$botcounter]];
 		my @words = split(/#/, $terms[$termcounter[$botcounter]]);
-		my $ep = sprintf("%.2d", $episode[$botcounter]);
+		my $ep = sprintf("%d", $episode[$botcounter]);
 		if ($#words > 0){$searchterm = "$words[0]$ep$words[1]";}
 		else {$searchterm = "$terms[$termcounter[$botcounter]] $ep";}
 
@@ -579,7 +579,6 @@ sub ag_addfinished		#save finished downloads
 	close(FINISHED);
 	ag_getfinished;
 }
-
 
 sub ag_parseadd		#parses add arguments for storage
 {
